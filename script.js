@@ -47,7 +47,51 @@ for (let i = 0; i < numParticles; i++) {
     velY[i] = 0;
 }
 
+function attractionForce(radius, attraction) {
+    const beta = 0.3;
+    if (radius < beta) {
+        return radius / beta - 1;
+    } else if (beta < radius && radius < 1) {
+        return attraction * (1 - Math.abs(2 * radius - 1 - beta) / (1 - beta));
+    } else {
+        return 0;
+    }
+}
+
+function updateParticles() {
+    // Update velocites
+    for (let i = 0; i < numParticles; i++) {
+        let totalForceX = 0;
+        let totalForceY = 0;
+
+        for (let j = 0; j < numParticles; j++) {
+            if (j === i) continue; // Skip itself
+            const radiusX = posX[j] - posX[i];
+            const radiusY = posY[j] - posY[i];
+            const radius = Math.hypot(radiusX, radiusY);
+            if (radius > 0 && radius < maxRadius) {
+                const force = attractionForce(radius / maxRadius, attractionMatrix[colors[i]][colors[j]]); // Normalize the distance
+                totalForceX += radiusX / radius * force;
+                totalForceY += radiusY / radius * force;
+            }
+        }
+
+        // Scale forces by max radius
+        totalForceX *= maxRadius;
+        totalForceY *= maxRadius;
+
+        velX[i] *= frictionFactor;
+        velY[i] *= frictionFactor;
+
+        velX[i] += totalForceX * deltaTime;
+        velY[i] += totalForceY * deltaTime;
+    }
+}
+
 function loop() {
+    // Update particles
+    updateParticles();
+
     // Draw particles
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
