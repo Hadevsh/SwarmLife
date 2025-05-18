@@ -6,16 +6,20 @@ canvas.height = window.innerHeight;
 
 // Particle count
 const numParticles = 2000;
-const numColors = 3;
+const numColors = 4;
 
-// Forces
+// Interaction strengths: matrix[colorA][colorB] gives a value in [-1,1]
+// Positive -> attraction, Negative -> repulsion
 const attractionMatrix = createRandomMatrix();
+
+// Friction is modelled as a decay with specified half-life
+// Time for velocity to decay by half
 const frictionHalfTime = 0.040; // tHalf >= 0
 
-// Computation
-const deltaTime = 0.02; // time step
-const maxRadius = 0.1; // rMax > 0
+const deltaTime = 0.05; // Discrete time step, in seconds (time step)
+const maxRadius = 0.1; // Max radius of interaction, rMax > 0
 
+// Velocities are multiplied by this factor each update to simulate damping
 const frictionFactor = Math.pow(0.5, deltaTime / frictionHalfTime)
 
 function createRandomMatrix() {
@@ -30,91 +34,125 @@ function createRandomMatrix() {
     return rows;
 }
 
-// Paricle data
+// Paricle states data
+// We use typed arrays for performance
 const colors = new Int32Array(numParticles);
 const posX = new Float32Array(numParticles);
 const posY = new Float32Array(numParticles);
 const velX = new Float32Array(numParticles);
 const velY = new Float32Array(numParticles);
+
+// Initialize each particle with random position, zero velocity, random color
 for (let i = 0; i < numParticles; i++) {
     colors[i] = Math.floor(Math.random() * numColors);
-
-    // Set random coordinates for each particle
     posX[i] = Math.random();
     posY[i] = Math.random();
-
     velX[i] = 0;
     velY[i] = 0;
 }
 
-function attractionForce(radius, attraction) {
+function attractionForce(r_norm, attraction) {
+    /*
+    Computes the pairwise force magnitude based on normalized distance and 
+    the attraction coefficient.
+    We use a piecewise function:
+    Let r_norm = distance / maxRadius (so r_norm in [0..∞])
+    Beta = 0.3 defines a short-range repulsion zone (r_norm < Beta)
+        => force = (r_norm / Beta) - 1  (ranges from -1 at r_norm=0 to 0 at r_norm=Beta)
+    For Beta <= r_norm <= 1: a smooth attraction/repulsion scaled by "attraction"
+        => force = attraction * (1 - |2*r_norm - 1 - Beta|/(1 - Beta))
+    Outside r_norm>1: no interaction
+    */
     const beta = 0.3;
-    if (radius < beta) {
-        return radius / beta - 1;
-    } else if (beta < radius && radius < 1) {
-        return attraction * (1 - Math.abs(2 * radius - 1 - beta) / (1 - beta));
+    if (r_norm < beta) {
+        // Strong short-range repulsion to avoid overlaps
+        return r_norm / beta - 1;
+    } else if (beta < r_norm && r_norm < 1) {
+        // Attraction or mild repulsion, depending on matrix value
+        return attraction * (1 - Math.abs(2 * r_norm - 1 - beta) / (1 - beta));
     } else {
+        // No force beyond maxRadius
         return 0;
     }
 }
 
+// Update all particles: compute forces, update velocities & positions
 function updateParticles() {
-    // Update velocites
+    // Compute velocity updates based on all pairwise interactions
     for (let i = 0; i < numParticles; i++) {
         let totalForceX = 0;
         let totalForceY = 0;
 
         for (let j = 0; j < numParticles; j++) {
             if (j === i) continue; // Skip itself
-            const radiusX = posX[j] - posX[i];
-            const radiusY = posY[j] - posY[i];
-            const radius = Math.hypot(radiusX, radiusY);
-            if (radius > 0 && radius < maxRadius) {
-                const force = attractionForce(radius / maxRadius, attractionMatrix[colors[i]][colors[j]]); // Normalize the distance
-                totalForceX += radiusX / radius * force;
-                totalForceY += radiusY / radius * force;
+
+            // Vector from i to j
+            const dx = posX[j] - posX[i];
+            const dy = posY[j] - posY[i];
+            const dist = Math.hypot(dx, dy);
+
+            // Only interact if within maxRadius
+            if (dist > 0 && dist < maxRadius) {
+                // Normalize distance to [0, 1]
+                const r_norm = dist / maxRadius;
+
+                // Look up attraction coefficient by color pair
+                const a = attractionMatrix[colors[i]][colors[j]];
+
+                // Compute scalar force magnitude via piecewise law
+                const f = attractionForce(r_norm, a); // Normalize the distance
+
+                // Add vector contribution (unit direction * magnitude)
+                totalForceX += dx / dist * f;
+                totalForceY += dy / dist * f;
             }
         }
 
-        // Scale forces by max radius
+        // Scale by maxRadius to keep units consistent
         totalForceX *= maxRadius;
         totalForceY *= maxRadius;
 
+        // Apply friction (velocity decay)
         velX[i] *= frictionFactor;
         velY[i] *= frictionFactor;
 
+        // Euler integration: v = v + F*dt
         velX[i] += totalForceX * deltaTime;
         velY[i] += totalForceY * deltaTime;
     }
 
     // Update positions
     for (let i = 0; i < numParticles; i++) {
+        // Euler integration: x = x + v*dt
         posX[i] += velX[i] * deltaTime;
         posY[i] += velY[i] * deltaTime;
     }
 }
 
+// Update state and redraw
 function loop() {
-    // Update particles
     updateParticles();
 
-    // Draw particles
+    // Clear canvas to black background
     ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Draw each particle as a small circle
     for (let i = 0; i < numParticles; i++) {
-        ctx.beginPath();
-
         // Scale each particle coordinates up to screen coordinates
-        const screenX = posX[i] * canvas.width;
-        const screenY = posY[i] * canvas.height;
-
-        ctx.arc(screenX, screenY, 1, 0, 2 * Math.PI);
-        ctx.fillStyle = `hsl(${360 * (colors[i] / numColors)}, 100%, 50%)` // Color based on number of different colored particles
+        const x = posX[i] * canvas.width;
+        const y = posY[i] * canvas.height;
+        
+        ctx.beginPath();
+        ctx.arc(x, y, 1, 0, 2 * Math.PI);
+        // Color hue based on particle type (evenly spaced on color wheel)
+        ctx.fillStyle = `hsl(${360 * (colors[i] / numColors)}, 100%, 50%)`;
         ctx.fill();
     }
-
+    
+    // Queue up next frame
     requestAnimationFrame(loop);
 }
 
+// Start the animation
 requestAnimationFrame(loop);
