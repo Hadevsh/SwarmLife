@@ -6,11 +6,11 @@ canvas.height = window.innerHeight;
 
 // Particle count
 const numParticles = 2000;
-const numColors = 4;
+const numColors = 6;
 
 // Interaction strengths: matrix[colorA][colorB] gives a value in [-1,1]
 // Positive -> attraction, Negative -> repulsion
-const attractionMatrix = createRandomMatrix();
+let attractionMatrix = createRandomMatrix();
 
 // Friction is modelled as a decay with specified half-life
 // Time for velocity to decay by half
@@ -69,7 +69,7 @@ function attractionForce(r_norm, attraction) {
         => force = attraction * (1 - |2*r_norm - 1 - Beta|/(1 - Beta))
     Outside r_norm>1: no interaction
     */
-    const beta = 0.3;
+    const beta = 0.4;
     if (r_norm < beta) {
         // Strong short-range repulsion to avoid overlaps
         return r_norm / beta - 1;
@@ -245,4 +245,6 @@ copyMatrixButton.addEventListener("click", () => {
 });
 
 const randomMatrixButton = document.getElementById('random-matrix');
-randomMatrixButton.addEventListener("click", createRandomMatrix);
+randomMatrixButton.addEventListener("click", () => {
+    attractionMatrix = createRandomMatrix();
+});
