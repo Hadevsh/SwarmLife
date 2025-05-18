@@ -23,7 +23,11 @@ const maxRadius = 0.1; // Max radius of interaction, rMax > 0
 const cellSize = maxRadius;
 const gridCols = Math.ceil(1 / cellSize);
 const gridRows = gridCols;  // domain is [0,1]×[0,1]
+
 const grid = new Array(gridCols * gridRows);
+for (let i = 0; i < grid.length; i++) {
+    grid[i] = [];  // once, at setup
+}
 
 // Velocities are multiplied by this factor each update to simulate damping
 const frictionFactor = Math.pow(0.5, deltaTime / frictionHalfTime)
@@ -86,7 +90,7 @@ function attractionForce(r_norm, attraction) {
 // Build spatial‐hash: clear & bucket every step
 function buildGrid() {
     for (let i = 0; i < grid.length; i++) {
-        grid[i] = [];
+        grid[i].length = 0;  // cheap clear
     }
     for (let i = 0; i < numParticles; i++) {
         const cx = Math.floor(posX[i] / cellSize) % gridCols;
