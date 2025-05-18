@@ -32,10 +32,10 @@ function createRandomMatrix() {
 
 // Paricle data
 const colors = new Int32Array(numParticles);
-const posX = new Int32Array(numParticles);
-const posY = new Int32Array(numParticles);
-const velX = new Int32Array(numParticles);
-const velY = new Int32Array(numParticles);
+const posX = new Float32Array(numParticles);
+const posY = new Float32Array(numParticles);
+const velX = new Float32Array(numParticles);
+const velY = new Float32Array(numParticles);
 for (let i = 0; i < numParticles; i++) {
     colors[i] = Math.floor(Math.random() * numColors);
 
@@ -85,6 +85,12 @@ function updateParticles() {
 
         velX[i] += totalForceX * deltaTime;
         velY[i] += totalForceY * deltaTime;
+    }
+
+    // Update positions
+    for (let i = 0; i < numParticles; i++) {
+        posX[i] += velX[i] * deltaTime;
+        posY[i] += velY[i] * deltaTime;
     }
 }
 
