@@ -29,3 +29,20 @@ function createRandomMatrix() {
     }
     return rows;
 }
+
+// Paricle data
+const colors = new Int32Array(numParticles);
+const posX = new Int32Array(numParticles);
+const posY = new Int32Array(numParticles);
+const velX = new Int32Array(numParticles);
+const velY = new Int32Array(numParticles);
+for (let i = 0; i < numParticles; i++) {
+    colors[i] = Math.floor(Math.random() * numColors);
+
+    // Set random coordinates for each particle
+    posX[i] = Math.random();
+    posY[i] = Math.random();
+
+    velX[i] = 0;
+    velY[i] = 0;
+}
