@@ -247,4 +247,5 @@ copyMatrixButton.addEventListener("click", () => {
 const randomMatrixButton = document.getElementById('random-matrix');
 randomMatrixButton.addEventListener("click", () => {
     attractionMatrix = createRandomMatrix();
+    renderMatrix();
 });
