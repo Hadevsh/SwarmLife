@@ -167,8 +167,31 @@ function updateParticles() {
     }
 }
 
+// Variables for fps counter
+let lastTime = performance.now();
+let frameCount = 0;
+let fps = 0;
+
+function drawFPS() {
+    ctx.save();
+    ctx.fillStyle = "white";
+    ctx.font = "16px monospace";
+    ctx.textAlign = "left";
+    ctx.fillText(`FPS: ${fps.toFixed(1)}`, canvas.width - 100, 20);
+    ctx.restore();
+}
+
 // Update state and redraw
-function loop() {
+function loop(now) {
+    // "now" is the high-res timestamp passed by requestAnimationFrame
+    frameCount++;
+    const delta = now - lastTime;
+    if (delta >= 1000) {  // every second
+        fps = frameCount * 1000 / delta;
+        frameCount = 0;
+        lastTime = now;
+    }
+
     updateParticles();
 
     // Clear canvas to black background
@@ -193,6 +216,8 @@ function loop() {
         ctx.fillStyle = `hsl(${360 * (colors[i] / numColors)}, 100%, 50%)`;
         ctx.fill();
     }
+
+    drawFPS();
 
     // Queue up next frame
     requestAnimationFrame(loop);
