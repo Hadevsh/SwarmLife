@@ -46,3 +46,25 @@ for (let i = 0; i < numParticles; i++) {
     velX[i] = 0;
     velY[i] = 0;
 }
+
+function loop() {
+    // Draw particles
+    ctx.fillStyle = "black";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let i = 0; i < numParticles; i++) {
+        ctx.beginPath();
+
+        // Scale each particle coordinates up to screen coordinates
+        const screenX = posX[i] * canvas.width;
+        const screenY = posY[i] * canvas.height;
+
+        ctx.arc(screenX, screenY, 1, 0, 2 * Math.PI);
+        ctx.fillStyle = `hsl(${360 * (colors[i] / numColors)}, 100%, 50%)` // Color based on number of different colored particles
+        ctx.fill();
+    }
+
+    requestAnimationFrame(loop);
+}
+
+requestAnimationFrame(loop);
