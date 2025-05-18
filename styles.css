@@ -14,3 +14,37 @@ body, html {
 canvas {
     display: block;
 }
+
+#matrix-details {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 8px;
+    border-radius: 4px;
+    color: #fff;
+    z-index: 100;
+    font-family: sans-serif;
+}
+
+#matrix-details summary {
+    cursor: pointer;
+}
+
+#matrix-container {
+    display: grid;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+/* All cells share a base size */
+.cell {
+    width: 24px;
+    height: 24px;
+    box-sizing: border-box;
+}
+
+/* Header: perfect circles */
+.header-cell {
+    border-radius: 50%;
+}

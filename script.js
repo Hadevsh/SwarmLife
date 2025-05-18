@@ -5,8 +5,8 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 // Particle count
-const numParticles = 2000;
-const numColors = 4;
+const numParticles = 1000;
+const numColors = 6;
 
 // Interaction strengths: matrix[colorA][colorB] gives a value in [-1,1]
 // Positive -> attraction, Negative -> repulsion
@@ -16,7 +16,7 @@ const attractionMatrix = createRandomMatrix();
 // Time for velocity to decay by half
 const frictionHalfTime = 0.040; // tHalf >= 0
 
-const deltaTime = 0.05; // Discrete time step, in seconds (time step)
+const deltaTime = 0.02; // Discrete time step, in seconds (time step)
 const maxRadius = 0.1; // Max radius of interaction, rMax > 0
 
 // Velocities are multiplied by this factor each update to simulate damping
@@ -149,10 +149,71 @@ function loop() {
         ctx.fillStyle = `hsl(${360 * (colors[i] / numColors)}, 100%, 50%)`;
         ctx.fill();
     }
-    
+
     // Queue up next frame
     requestAnimationFrame(loop);
 }
 
 // Start the animation
 requestAnimationFrame(loop);
+
+// Interaction matrix display
+const details = document.getElementById('matrix-details');
+const container = document.getElementById('matrix-container');
+
+function particleHue(idx) {
+    return `hsl(${360 * (idx / numColors)},100%,50%)`;
+}
+
+function valueColor(v) {
+    const mag = Math.min(Math.abs(v), 1);
+    if (v >= 0) {
+        // green ramp: white → green
+        return `rgba(${255 - 255*mag},${255},${255 - 255*mag},1)`;
+    } else {
+        // red ramp: white → red
+        return `rgba(${255},${255 - 255*mag},${255 - 255*mag},1)`;
+    }
+}
+
+function renderMatrix() {
+    const N = numColors + 1;
+    container.style.gridTemplateColumns = `repeat(${N}, auto)`;
+    container.style.gridTemplateRows    = `repeat(${N}, auto)`;
+    container.innerHTML = '';
+
+    // 1) Top-left placeholder
+    container.appendChild(document.createElement('div'));
+
+    // 2) Top header (color circles)
+    for (let j = 0; j < numColors; j++) {
+        const div = document.createElement('div');
+        div.classList.add('cell','header-cell');
+        div.style.background = particleHue(j);
+        div.title = `Color ${j}`;
+        container.appendChild(div);
+    }
+
+    // 3) Rows: each starts with a header circle, then data squares
+    for (let i = 0; i < numColors; i++) {
+        // 3a) Row-header circle
+        const hdr = document.createElement('div');
+        hdr.classList.add('cell','header-cell');
+        hdr.style.background = particleHue(i);
+        hdr.title = `Color ${i}`;
+        container.appendChild(hdr);
+
+        // 3b) Data cells
+        for (let j = 0; j < numColors; j++) {
+        const v = attractionMatrix[i][j];
+        const cell = document.createElement('div');
+        cell.classList.add('cell','data-cell');
+        cell.style.background = valueColor(v);
+        cell.title = v.toFixed(2);
+        container.appendChild(cell);
+        }
+    }
+}
+
+// Render once the DOM is ready
+document.addEventListener('DOMContentLoaded', renderMatrix);
