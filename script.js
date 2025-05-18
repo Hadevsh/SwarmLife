@@ -239,8 +239,10 @@ function renderMatrix() {
 
 document.addEventListener('DOMContentLoaded', renderMatrix);
 
-console.log(attractionMatrix);
 const copyMatrixButton = document.getElementById('copy-matrix');
 copyMatrixButton.addEventListener("click", () => {
     navigator.clipboard.writeText(attractionMatrix);
 });
+
+const randomMatrixButton = document.getElementById('random-matrix');
+randomMatrixButton.addEventListener("click", createRandomMatrix);

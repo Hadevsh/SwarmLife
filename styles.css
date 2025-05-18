@@ -57,7 +57,7 @@ canvas {
     border-radius: 50%;
 }
 
-#copy-matrix {
+button {
     color: #fff;
     border: 1px solid #fff;
     border-radius: 5px;
@@ -68,7 +68,7 @@ canvas {
     transition: border 0.2s, background 0.2s;
 }
 
-#copy-matrix:hover {
+button:hover {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
