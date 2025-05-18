@@ -5,8 +5,8 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 // Particle count
-const numParticles = 1000;
-const numColors = 6;
+const numParticles = 5000;
+const numColors = 5;
 
 // Interaction strengths: matrix[colorA][colorB] gives a value in [-1,1]
 // Positive -> attraction, Negative -> repulsion
@@ -18,6 +18,12 @@ const frictionHalfTime = 0.040; // tHalf >= 0
 
 const deltaTime = 0.02; // Discrete time step, in seconds (time step)
 const maxRadius = 0.1; // Max radius of interaction, rMax > 0
+
+// Spatial‐hash grid settings
+const cellSize = maxRadius;
+const gridCols = Math.ceil(1 / cellSize);
+const gridRows = gridCols;  // domain is [0,1]×[0,1]
+const grid = new Array(gridCols * gridRows);
 
 // Velocities are multiplied by this factor each update to simulate damping
 const frictionFactor = Math.pow(0.5, deltaTime / frictionHalfTime)
@@ -76,56 +82,77 @@ function attractionForce(r_norm, attraction) {
     }
 }
 
+// Build spatial‐hash: clear & bucket every step
+function buildGrid() {
+    for (let i = 0; i < grid.length; i++) {
+        grid[i] = [];
+    }
+    for (let i = 0; i < numParticles; i++) {
+        const cx = Math.floor(posX[i] / cellSize) % gridCols;
+        const cy = Math.floor(posY[i] / cellSize) % gridRows;
+        // normalize negative modulo
+        const idx = ((cx + gridCols) % gridCols) + ((cy + gridRows) % gridRows)*gridCols;
+        grid[idx].push(i);
+    }
+}
+
 // Update all particles: compute forces, update velocities & positions
 function updateParticles() {
+    buildGrid();
+
     // Compute velocity updates based on all pairwise interactions
     for (let i = 0; i < numParticles; i++) {
-        let totalForceX = 0;
-        let totalForceY = 0;
+        const xi = posX[i];
+        const yi = posY[i];
+        const ci = colors[i];
+        let fx = 0; // Total force y
+        let fy = 0; // Total force x
 
-        for (let j = 0; j < numParticles; j++) {
-            if (j === i) continue; // Skip itself
+        // This particle's cell
+        const cx = Math.floor(xi / cellSize);
+        const cy = Math.floor(yi / cellSize);
 
-            // Vector from i to j
-            const dx = posX[j] - posX[i];
-            const dy = posY[j] - posY[i];
-            const dist = Math.hypot(dx, dy);
+        // Loop over 3×3 neighborhood with wrapping
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                const nx = (cx + dx + gridCols) % gridCols;
+                const ny = (cy + dy + gridRows) % gridRows;
+                const bucket = grid[nx + ny * gridCols];
+                for (let k = 0; k < bucket.length; k++) {
+                    const j = bucket[k];
+                    if (j === i) continue;
 
-            // Only interact if within maxRadius
-            if (dist > 0 && dist < maxRadius) {
-                // Normalize distance to [0, 1]
-                const r_norm = dist / maxRadius;
+                    // Compute periodic delta
+                    let dx_ = posX[j] - xi;
+                    let dy_ = posY[j] - yi;
+                    if (dx_ >  0.5) dx_ -= 1;
+                    if (dx_ < -0.5) dx_ += 1;
+                    if (dy_ >  0.5) dy_ -= 1;
+                    if (dy_ < -0.5) dy_ += 1;
 
-                // Look up attraction coefficient by color pair
-                const a = attractionMatrix[colors[i]][colors[j]];
-
-                // Compute scalar force magnitude via piecewise law
-                const f = attractionForce(r_norm, a); // Normalize the distance
-
-                // Add vector contribution (unit direction * magnitude)
-                totalForceX += dx / dist * f;
-                totalForceY += dy / dist * f;
+                    const dist = Math.hypot(dx_, dy_);
+                    if (dist > 0 && dist < maxRadius) {
+                        const r_norm = dist / maxRadius;
+                        const a = attractionMatrix[ci][colors[j]];
+                        const f = attractionForce(r_norm, a);
+                        fx += (dx_ / dist) * f;
+                        fy += (dy_ / dist) * f;
+                    }
+                }
             }
         }
 
-        // Scale by maxRadius to keep units consistent
-        totalForceX *= maxRadius;
-        totalForceY *= maxRadius;
-
-        // Apply friction (velocity decay)
-        velX[i] *= frictionFactor;
-        velY[i] *= frictionFactor;
-
-        // Euler integration: v = v + F*dt
-        velX[i] += totalForceX * deltaTime;
-        velY[i] += totalForceY * deltaTime;
+        // scale and integrate
+        fx *= maxRadius;
+        fy *= maxRadius;
+        velX[i] = velX[i] * frictionFactor + fx * deltaTime;
+        velY[i] = velY[i] * frictionFactor + fy * deltaTime;
     }
 
-    // Update positions
+    // update positions with wrapping
     for (let i = 0; i < numParticles; i++) {
-        // Euler integration: x = x + v*dt
-        posX[i] += velX[i] * deltaTime;
-        posY[i] += velY[i] * deltaTime;
+        posX[i] = (posX[i] + velX[i] * deltaTime + 1) % 1;
+        posY[i] = (posY[i] + velY[i] * deltaTime + 1) % 1;
     }
 }
 
@@ -162,7 +189,7 @@ const details = document.getElementById('matrix-details');
 const container = document.getElementById('matrix-container');
 
 function particleHue(idx) {
-    return `hsl(${360 * (idx / numColors)},100%,50%)`;
+    return `hsl(${360 * (idx / numColors)}, 100%, 50%)`;
 }
 
 function valueColor(v) {
@@ -182,10 +209,8 @@ function renderMatrix() {
     container.style.gridTemplateRows    = `repeat(${N}, auto)`;
     container.innerHTML = '';
 
-    // 1) Top-left placeholder
     container.appendChild(document.createElement('div'));
 
-    // 2) Top header (color circles)
     for (let j = 0; j < numColors; j++) {
         const div = document.createElement('div');
         div.classList.add('cell','header-cell');
@@ -194,7 +219,6 @@ function renderMatrix() {
         container.appendChild(div);
     }
 
-    // 3) Rows: each starts with a header circle, then data squares
     for (let i = 0; i < numColors; i++) {
         // 3a) Row-header circle
         const hdr = document.createElement('div');
@@ -203,7 +227,6 @@ function renderMatrix() {
         hdr.title = `Color ${i}`;
         container.appendChild(hdr);
 
-        // 3b) Data cells
         for (let j = 0; j < numColors; j++) {
         const v = attractionMatrix[i][j];
         const cell = document.createElement('div');
@@ -215,5 +238,4 @@ function renderMatrix() {
     }
 }
 
-// Render once the DOM is ready
 document.addEventListener('DOMContentLoaded', renderMatrix);
