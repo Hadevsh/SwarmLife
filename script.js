@@ -5,7 +5,7 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 // Particle count
-const numParticles = 2000;
+const numParticles = 3000;
 const numColors = 6;
 
 // Interaction strengths: matrix[colorA][colorB] gives a value in [-1,1]
@@ -40,13 +40,14 @@ function createRandomMatrix() {
     return rows;
 }
 
-// Paricle states data
+// Particle states data
 // We use typed arrays for performance
 const colors = new Int32Array(numParticles);
 const posX = new Float32Array(numParticles);
 const posY = new Float32Array(numParticles);
 const velX = new Float32Array(numParticles);
 const velY = new Float32Array(numParticles);
+const densities = new Uint16Array(numParticles);  // neighbor counts
 
 // Initialize each particle with random position, zero velocity, random color
 for (let i = 0; i < numParticles; i++) {
@@ -108,6 +109,8 @@ function updateParticles() {
         let fx = 0; // Total force y
         let fy = 0; // Total force x
 
+        let neighborCount = 0;
+
         // This particle's cell
         const cx = Math.floor(xi / cellSize);
         const cy = Math.floor(yi / cellSize);
@@ -132,6 +135,9 @@ function updateParticles() {
 
                     const dist = Math.hypot(dx_, dy_);
                     if (dist > 0 && dist < maxRadius) {
+                        // Count close neighbors for glow
+                        if (dist < maxRadius * 0.5) neighborCount++;
+
                         const r_norm = dist / maxRadius;
                         const a = attractionMatrix[ci][colors[j]];
                         const f = attractionForce(r_norm, a);
@@ -141,6 +147,7 @@ function updateParticles() {
                 }
             }
         }
+        densities[i] = neighborCount;
 
         // scale and integrate
         fx *= maxRadius;
@@ -169,7 +176,13 @@ function loop() {
         // Scale each particle coordinates up to screen coordinates
         const x = posX[i] * canvas.width;
         const y = posY[i] * canvas.height;
+
+        // Glow based on local crowding
+        const glowSize = Math.min(densities[i] * 2, 20);
+        ctx.shadowBlur = glowSize;
+        ctx.shadowColor = `hsl(${360 * (colors[i] / numColors)}, 100%, 50%)`;
         
+        // Draw particle
         ctx.beginPath();
         ctx.arc(x, y, 1, 0, 2 * Math.PI);
         // Color hue based on particle type (evenly spaced on color wheel)
