@@ -5,8 +5,8 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 // Particle count
-const numParticles = 5000;
-const numColors = 5;
+const numParticles = 2000;
+const numColors = 4;
 
 // Interaction strengths: matrix[colorA][colorB] gives a value in [-1,1]
 // Positive -> attraction, Negative -> repulsion
@@ -16,7 +16,7 @@ const attractionMatrix = createRandomMatrix();
 // Time for velocity to decay by half
 const frictionHalfTime = 0.040; // tHalf >= 0
 
-const deltaTime = 0.02; // Discrete time step, in seconds (time step)
+const deltaTime = 0.01; // Discrete time step, in seconds (time step)
 const maxRadius = 0.1; // Max radius of interaction, rMax > 0
 
 // Spatial‐hash grid settings
@@ -196,46 +196,51 @@ function valueColor(v) {
     const mag = Math.min(Math.abs(v), 1);
     if (v >= 0) {
         // green ramp: white → green
-        return `rgba(${255 - 255*mag},${255},${255 - 255*mag},1)`;
+        return `rgba(${255 - 255*mag}, ${255}, ${255 - 255*mag}, 1)`;
     } else {
         // red ramp: white → red
-        return `rgba(${255},${255 - 255*mag},${255 - 255*mag},1)`;
+        return `rgba(${255}, ${255 - 255*mag}, ${255 - 255*mag}, 1)`;
     }
 }
 
 function renderMatrix() {
     const N = numColors + 1;
     container.style.gridTemplateColumns = `repeat(${N}, auto)`;
-    container.style.gridTemplateRows    = `repeat(${N}, auto)`;
+    container.style.gridTemplateRows = `repeat(${N}, auto)`;
     container.innerHTML = '';
 
     container.appendChild(document.createElement('div'));
 
     for (let j = 0; j < numColors; j++) {
         const div = document.createElement('div');
-        div.classList.add('cell','header-cell');
+        div.classList.add('cell', 'header-cell');
         div.style.background = particleHue(j);
         div.title = `Color ${j}`;
         container.appendChild(div);
     }
 
     for (let i = 0; i < numColors; i++) {
-        // 3a) Row-header circle
         const hdr = document.createElement('div');
-        hdr.classList.add('cell','header-cell');
+        hdr.classList.add('cell', 'header-cell');
         hdr.style.background = particleHue(i);
         hdr.title = `Color ${i}`;
         container.appendChild(hdr);
 
         for (let j = 0; j < numColors; j++) {
-        const v = attractionMatrix[i][j];
-        const cell = document.createElement('div');
-        cell.classList.add('cell','data-cell');
-        cell.style.background = valueColor(v);
-        cell.title = v.toFixed(2);
-        container.appendChild(cell);
+            const v = attractionMatrix[i][j];
+            const cell = document.createElement('div');
+            cell.classList.add('cell', 'data-cell');
+            cell.style.background = valueColor(v);
+            cell.title = v.toFixed(2);
+            container.appendChild(cell);
         }
     }
 }
 
 document.addEventListener('DOMContentLoaded', renderMatrix);
+
+console.log(attractionMatrix);
+const copyMatrixButton = document.getElementById('copy-matrix');
+copyMatrixButton.addEventListener("click", () => {
+    navigator.clipboard.writeText(attractionMatrix);
+});
