@@ -5,7 +5,7 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 // Particle count
-const numParticles = 3000;
+const numParticles = 2000;
 const numColors = 6;
 
 // Interaction strengths: matrix[colorA][colorB] gives a value in [-1,1]
@@ -74,7 +74,7 @@ function attractionForce(r_norm, attraction) {
         => force = attraction * (1 - |2*r_norm - 1 - Beta|/(1 - Beta))
     Outside r_norm>1: no interaction
     */
-    const beta = 0.4;
+    const beta = 0.3;
     if (r_norm < beta) {
         // Strong short-range repulsion to avoid overlaps
         return r_norm / beta - 1;
@@ -207,7 +207,7 @@ function loop(now) {
         // Glow based on local crowding
         const glowSize = Math.min(densities[i] * 2, 20);
         ctx.shadowBlur = glowSize;
-        ctx.shadowColor = `hsl(${360 * (colors[i] / numColors)}, 100%, 50%)`;
+        ctx.shadowColor = `hsl(${360 * (colors[i] / numColors)}, 100%, 100%)`;
         
         // Draw particle
         ctx.beginPath();
